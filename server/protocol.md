@@ -48,5 +48,11 @@
             "y" : <int> (y_new)
         }
 
+4. LEFT :
 
+    Client -> Server : 
+        {
+            "type": "LEFT",
+            "id": "<player-id>",
+        }
 

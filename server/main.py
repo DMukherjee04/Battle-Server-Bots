@@ -14,6 +14,13 @@ async def broadcast(data, exclude = None):
         if connection_soc is not exclude:
             await loop.sock_sendall(connection_soc,((json.dumps(data)) + '\n').encode())
 
+def all_players(exclude = None):
+    all_players = {}
+    for key in players.keys():
+        if key != exclude:
+            all_players[f"{key}"] = players[f"{key}"]
+    return all_players
+
 async def handle_client(conn):
 
     conn.setblocking(False)
@@ -38,17 +45,29 @@ async def handle_client(conn):
 
             if recv_obj['type'] == 'JOIN' :
 
-                sent_obj = {
+                sent_obj = { ## to the player who joined
                     'type': 'WELCOME',
-                    'id': recv_obj['id']
+                    'id': recv_obj['id'],
+                    'x' : 0,
+                    'y' : 0,
+                    'hp' : 100,
+                    'players' : all_players(recv_obj['id'])
                 }
 
-                players[f"{recv_obj['id']}"] = {
+                players[f"{recv_obj['id']}"] = { 
                     'x' : 0,
                     'y' : 0,
                     'hp' : 100
                 }
 
+                joined_player_info = { ## to all the other players, letting them know who joined 
+                    'id' : recv_obj['id'],
+                    'x' : 0,
+                    'y' : 0,
+                    'hp' : 100
+                }
+
+                asyncio.create_task(broadcast(joined_player_info, conn)) ## broadcast who joined
                 conn_id = recv_obj['id']
                 await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
 
@@ -63,19 +82,24 @@ async def handle_client(conn):
 
             elif recv_obj['type'] == 'MOVE' : 
 
-                sent_obj = {
-                    'type': 'MOVED',
+                sent_obj = { ## to the player that moved
+                    'type': 'MOVED', 
                     'id': recv_obj['id'],
                     'x' : players[recv_obj['id']]['x'] + recv_obj['dx'],
                     'y' : players[recv_obj['id']]['y'] + recv_obj['dy']
                 }
 
-                asyncio.create_task(broadcast(sent_obj, conn))
                 players[f"{recv_obj['id']}"]['x'] = sent_obj['x']
                 players[f"{recv_obj['id']}"]['y'] = sent_obj['y']
+                asyncio.create_task(broadcast(sent_obj, conn)) ## broadcast who moved and where to, to every player
                 await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
 
     players.pop(conn_id, None)
+    leave_obj = {
+        'id' : conn_id,
+        'type' : 'LEFT'
+    }
+    asyncio.create_task(broadcast(leave_obj, conn)) ## broadcast leave to all players other than that player
     connections.discard(conn)
     conn.close()
 
