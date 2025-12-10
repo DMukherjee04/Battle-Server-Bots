@@ -71,12 +71,37 @@ async def handle_client(conn):
                 conn_id = recv_obj['id']
                 await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
 
-            elif recv_obj['type'] == 'ATTACK' : # hp related calc
+            elif recv_obj['type'] == 'ATTACK' : 
 
-                sent_obj = {
+                sent_obj = { ## sent to attacker
                     'type': 'ATTACKED',
-                    'id': recv_obj['id']
+                    'id': recv_obj['id'],
+                    'target' : recv_obj['target'], 
+                    'damage' : 20
                 }
+
+                players[sent_obj['target']]['hp'] = max(0, players[sent_obj['target']]['hp'] - sent_obj['damage'])  
+
+                sent_obj__global = {
+                    'type' : 'ATTACKED',
+                    'id' : sent_obj['target'],
+                    'x' : players[sent_obj['target']]['x'],
+                    'y' : players[sent_obj['target']]['y'],
+                    'hp' : players[sent_obj['target']]['hp']
+                }
+
+                asyncio.create_task(broadcast(sent_obj__global, conn)) ## broadcast who was attacked and its current state, to every player
+
+                if players[sent_obj['target']]['hp'] == 0:
+
+                    on_dead_obj = { ## broadcast to everyone
+                        'id' : recv_obj['target'],
+                        'type' : 'DEAD'
+                    }
+
+                    asyncio.create_task(broadcast(on_dead_obj))
+
+                    players.pop(recv_obj['target'], None)
 
                 await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
 
@@ -91,6 +116,7 @@ async def handle_client(conn):
 
                 players[f"{recv_obj['id']}"]['x'] = sent_obj['x']
                 players[f"{recv_obj['id']}"]['y'] = sent_obj['y']
+
                 asyncio.create_task(broadcast(sent_obj, conn)) ## broadcast who moved and where to, to every player
                 await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
 
