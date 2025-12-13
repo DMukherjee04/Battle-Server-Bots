@@ -19,7 +19,9 @@
     Client -> Server : 
         {
             "type": "ATTACK",
-            "id": "<player-id>"
+            "id": "<player-id>",
+            "directionX" : <int>,
+            "directionY" : <int>
         }
     
     Server -> Client : 
@@ -36,7 +38,7 @@
             "id": "<player-id>",
             "x_old" : <int>,
             "y_old" : <int>,
-            "dx" : <int> (x_new - x_old),
+            "dx" : <int>, (x_new - x_old),
             "dy" : <int> (y_new - y_old)
         }
     

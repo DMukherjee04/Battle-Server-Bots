@@ -6,7 +6,11 @@ HOST = "127.0.0.1"
 PORT = 5000
 
 players = {}
+inputs = {}
+projectiles = {}
 connections = set()
+
+projectile_count = 1
 
 async def broadcast(data, exclude = None):
     loop = asyncio.get_running_loop()
@@ -14,20 +18,65 @@ async def broadcast(data, exclude = None):
         if connection_soc is not exclude:
             await loop.sock_sendall(connection_soc,((json.dumps(data)) + '\n').encode())
 
-def all_players(exclude = None):
+def all_players(exclude = None):              
     all_players = {}
     for key in players.keys():
         if key != exclude:
             all_players[f"{key}"] = players[f"{key}"]
     return all_players
 
-async def handle_client(conn):
+def projectile_handling(): ## later i will handle the projectile termination and colision detection
+    for key, proj in list(projectiles.items()):
+        proj['x'] += proj['vx'] 
+        proj['y'] += proj['vy']
+
+def update_world_state(): ## to update world state
+    
+    global projectile_count
+
+    for key, cmd in list(inputs.items()):
+
+        if cmd['type'] == 'MOVE': ## handling MOVE
+
+            players[key]['x'] += cmd['dx']
+            players[key]['y'] += cmd['dy']
+
+        elif cmd['type'] == 'ATTACK': ## handling ATTACK
+
+            speed = 5
+
+            projectiles[projectile_count] = {
+                'owner' : key,
+                'x' : players[key]['x'],
+                'y' : players[key]['y'],
+                'vx' : speed * cmd['direction'][0], ## think of it like vector, dx -> units in i cap, speed * dx -> velocity
+                'vy' : speed * cmd['direction'][1]
+            }
+            projectile_count += 1
+
+    projectile_handling()
+
+    world_state = {
+        'type' : 'STATE',
+        'players' : players,
+        'projectiles' : projectiles
+    }
+    
+    inputs.clear()
+    asyncio.create_task(broadcast(world_state)) 
+
+async def server_tick_loop(): ## tick loop fnc
+    while True:
+        update_world_state()
+        await asyncio.sleep(0.033)
+
+async def client_handling(conn):
 
     conn.setblocking(False)
 
     loop = asyncio.get_running_loop()
     buffer = ''
-    conn_id = None
+    player_id = None
 
     while True:
 
@@ -45,7 +94,9 @@ async def handle_client(conn):
 
             if recv_obj['type'] == 'JOIN' :
 
-                sent_obj = { ## to the player who joined
+                player_id = recv_obj['id']
+
+                sent_obj_to_joinee = { ## to the player who joined
                     'type': 'WELCOME',
                     'id': recv_obj['id'],
                     'x' : 0,
@@ -54,13 +105,14 @@ async def handle_client(conn):
                     'players' : all_players(recv_obj['id'])
                 }
 
-                players[f"{recv_obj['id']}"] = { 
+                players[f"{recv_obj['id']}"] = { ## updating players obj
                     'x' : 0,
                     'y' : 0,
                     'hp' : 100
                 }
 
                 joined_player_info = { ## to all the other players, letting them know who joined 
+                    'type': 'JOINED',                    
                     'id' : recv_obj['id'],
                     'x' : 0,
                     'y' : 0,
@@ -68,61 +120,72 @@ async def handle_client(conn):
                 }
 
                 asyncio.create_task(broadcast(joined_player_info, conn)) ## broadcast who joined
-                conn_id = recv_obj['id']
-                await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
+                await loop.sock_sendall(conn,((json.dumps(sent_obj_to_joinee)) + '\n').encode())
 
             elif recv_obj['type'] == 'ATTACK' : 
 
-                sent_obj = { ## sent to attacker
-                    'type': 'ATTACKED',
-                    'id': recv_obj['id'],
-                    'target' : recv_obj['target'], 
-                    'damage' : 20
+                inputs[player_id] = {
+                    'type' : 'ATTACK',
+                    'direction' : (recv_obj['directionX'], recv_obj['directionY']),
+                    'damage' : 20 ## later would make it random
                 }
 
-                players[sent_obj['target']]['hp'] = max(0, players[sent_obj['target']]['hp'] - sent_obj['damage'])  
+                # sent_obj = { ## sent to attacker 
+                #     'type': 'ATTACKED',
+                #     'id': recv_obj['id'],
+                #     'target' : recv_obj['target'], 
+                #     'damage' : 20
+                # }
 
-                sent_obj__global = {
-                    'type' : 'ATTACKED',
-                    'id' : sent_obj['target'],
-                    'x' : players[sent_obj['target']]['x'],
-                    'y' : players[sent_obj['target']]['y'],
-                    'hp' : players[sent_obj['target']]['hp']
-                }
+                # players[sent_obj['target']]['hp'] = max(0, players[sent_obj['target']]['hp'] - sent_obj['damage'])  
 
-                asyncio.create_task(broadcast(sent_obj__global, conn)) ## broadcast who was attacked and its current state, to every player
+                # sent_obj__global = {
+                #     'type' : 'ATTACKED',
+                #     'id' : sent_obj['target'],
+                #     'x' : players[sent_obj['target']]['x'],
+                #     'y' : players[sent_obj['target']]['y'],
+                #     'hp' : players[sent_obj['target']]['hp']
+                # }
 
-                if players[sent_obj['target']]['hp'] == 0:
+                # asyncio.create_task(broadcast(sent_obj__global, conn)) ## broadcast who was attacked and its current state, to every player
 
-                    on_dead_obj = { ## broadcast to everyone
-                        'id' : recv_obj['target'],
-                        'type' : 'DEAD'
-                    }
+                # if players[sent_obj['target']]['hp'] == 0:
 
-                    asyncio.create_task(broadcast(on_dead_obj))
+                #     on_dead_obj = { ## broadcast to everyone
+                #         'id' : recv_obj['target'],
+                #         'type' : 'DEAD'
+                #     }
 
-                    players.pop(recv_obj['target'], None)
+                #     asyncio.create_task(broadcast(on_dead_obj))
 
-                await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
+                #     players.pop(recv_obj['target'], None)
+
+                # await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
 
             elif recv_obj['type'] == 'MOVE' : 
 
-                sent_obj = { ## to the player that moved
-                    'type': 'MOVED', 
-                    'id': recv_obj['id'],
-                    'x' : players[recv_obj['id']]['x'] + recv_obj['dx'],
-                    'y' : players[recv_obj['id']]['y'] + recv_obj['dy']
+                inputs[player_id] = {
+                    'type' : 'MOVE',
+                    'dx' : recv_obj['dx'],
+                    'dy' : recv_obj['dy']
                 }
 
-                players[f"{recv_obj['id']}"]['x'] = sent_obj['x']
-                players[f"{recv_obj['id']}"]['y'] = sent_obj['y']
+                # sent_obj_to_player = { ## to the player that moved
+                #     'type': '', 
+                #     'id': recv_obj['id'],       
+                #     'x' : players[recv_obj['id']]['x'],
+                #     'y' : players[recv_obj['id']]['y'] 
+                # }
 
-                asyncio.create_task(broadcast(sent_obj, conn)) ## broadcast who moved and where to, to every player
-                await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
+                # players[f"{recv_obj['id']}"]['x'] = sent_obj_to_player['x']
+                # players[f"{recv_obj['id']}"]['y'] = sent_obj_to_player['y']
 
-    players.pop(conn_id, None)
+                # asyncio.create_task(broadcast(sent_obj_to_player, conn)) ## broadcast who moved and where to, to every player
+                # await loop.sock_sendall(conn,((json.dumps(sent_obj_to_player)) + '\n').encode())
+
+    players.pop(player_id, None)
     leave_obj = {
-        'id' : conn_id,
+        'id' : player_id,
         'type' : 'LEFT'
     }
     asyncio.create_task(broadcast(leave_obj, conn)) ## broadcast leave to all players other than that player
@@ -135,12 +198,14 @@ async def main(s):
     s.listen()
     loop = asyncio.get_running_loop()
 
+    asyncio.create_task(server_tick_loop()) ## loop will go on
+
     while True:
 
         conn, addr = await loop.sock_accept(s)
         print(f"Connected by {addr}")
         connections.add(conn)
-        asyncio.create_task(handle_client(conn))
+        asyncio.create_task(client_handling(conn))
 
 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_soc:
     
