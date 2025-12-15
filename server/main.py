@@ -25,16 +25,22 @@ def all_players(exclude = None):
             all_players[f"{key}"] = players[f"{key}"]
     return all_players
 
-def projectile_handling():
+def projectile_handling(): 
 
     HIT_RADII = 10
     DAMAGE = 20
+    MAP_START = 0
+    MAP_END = 800
 
     proj_to_pop = []
     for key_proj, proj in list(projectiles.items()):
 
         proj['x'] += proj['vx'] 
         proj['y'] += proj['vy']
+
+        if proj['x'] > MAP_END or proj['y'] > MAP_END or proj['x'] < MAP_START or proj['y'] < MAP_START:
+                proj_to_pop.append(key_proj)
+                continue
  
         player_to_pop = None
         for key_player, player in list(players.items()): 
