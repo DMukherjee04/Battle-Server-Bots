@@ -156,38 +156,6 @@ async def client_handling(conn):
                     'damage' : 20 ## later would make it random
                 }
 
-                # sent_obj = { ## sent to attacker 
-                #     'type': 'ATTACKED',
-                #     'id': recv_obj['id'],
-                #     'target' : recv_obj['target'], 
-                #     'damage' : 20
-                # }
-
-                # players[sent_obj['target']]['hp'] = max(0, players[sent_obj['target']]['hp'] - sent_obj['damage'])  
-
-                # sent_obj__global = {
-                #     'type' : 'ATTACKED',
-                #     'id' : sent_obj['target'],
-                #     'x' : players[sent_obj['target']]['x'],
-                #     'y' : players[sent_obj['target']]['y'],
-                #     'hp' : players[sent_obj['target']]['hp']
-                # }
-
-                # asyncio.create_task(broadcast(sent_obj__global, conn)) ## broadcast who was attacked and its current state, to every player
-
-                # if players[sent_obj['target']]['hp'] == 0:
-
-                #     on_dead_obj = { ## broadcast to everyone
-                #         'id' : recv_obj['target'],
-                #         'type' : 'DEAD'
-                #     }
-
-                #     asyncio.create_task(broadcast(on_dead_obj))
-
-                #     players.pop(recv_obj['target'], None)
-
-                # await loop.sock_sendall(conn,((json.dumps(sent_obj)) + '\n').encode())
-
             elif recv_obj['type'] == 'MOVE' : 
 
                 inputs[player_id] = {
@@ -195,19 +163,6 @@ async def client_handling(conn):
                     'dx' : recv_obj['dx'],
                     'dy' : recv_obj['dy']
                 }
-
-                # sent_obj_to_player = { ## to the player that moved
-                #     'type': '', 
-                #     'id': recv_obj['id'],       
-                #     'x' : players[recv_obj['id']]['x'],
-                #     'y' : players[recv_obj['id']]['y'] 
-                # }
-
-                # players[f"{recv_obj['id']}"]['x'] = sent_obj_to_player['x']
-                # players[f"{recv_obj['id']}"]['y'] = sent_obj_to_player['y']
-
-                # asyncio.create_task(broadcast(sent_obj_to_player, conn)) ## broadcast who moved and where to, to every player
-                # await loop.sock_sendall(conn,((json.dumps(sent_obj_to_player)) + '\n').encode())
 
     players.pop(player_id, None)
     leave_obj = {
