@@ -25,10 +25,30 @@ def all_players(exclude = None):
             all_players[f"{key}"] = players[f"{key}"]
     return all_players
 
-def projectile_handling(): ## later i will handle the projectile termination and colision detection
-    for key, proj in list(projectiles.items()):
+def projectile_handling():
+
+    HIT_RADII = 10
+    DAMAGE = 20
+
+    proj_to_pop = []
+    for key_proj, proj in list(projectiles.items()):
+
         proj['x'] += proj['vx'] 
         proj['y'] += proj['vy']
+ 
+        player_to_pop = None
+        for key_player, player in list(players.items()): 
+            if abs(player['x'] - proj['x']) < HIT_RADII and abs(player['y'] - proj['y']) < HIT_RADII and key_player != proj['owner'] and player['hp'] > 0: ## hitbox
+                player['hp'] = max(0, player['hp'] - DAMAGE) ## later i would add variable dmg
+                if player['hp'] <= 0:
+                    player_to_pop = key_player
+                proj_to_pop.append(key_proj)
+                break
+        
+        players.pop(player_to_pop, None)
+
+    for key_proj_to_pop in proj_to_pop:
+        projectiles.pop(key_proj_to_pop, None)
 
 def update_world_state(): ## to update world state
     
@@ -43,7 +63,7 @@ def update_world_state(): ## to update world state
 
         elif cmd['type'] == 'ATTACK': ## handling ATTACK
 
-            speed = 5
+            speed = 5 ## will change acc to projectile type
 
             projectiles[projectile_count] = {
                 'owner' : key,
