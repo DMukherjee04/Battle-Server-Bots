@@ -92,6 +92,7 @@ def update_world_state(): ## to update world state
     asyncio.create_task(broadcast(world_state)) 
 
 async def server_tick_loop(): ## tick loop fnc
+    
     while True:
         update_world_state()
         await asyncio.sleep(0.033)
@@ -153,7 +154,6 @@ async def client_handling(conn):
                 inputs[player_id] = {
                     'type' : 'ATTACK',
                     'direction' : (recv_obj['directionX'], recv_obj['directionY']),
-                    'damage' : 20 ## later would make it random
                 }
 
             elif recv_obj['type'] == 'MOVE' : 
