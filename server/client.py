@@ -16,8 +16,8 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
     bullet_obj = {
         'id' : 'xyz',
         'type' : 'ATTACK',
-        'directionX' : 4,
-        'directionY' : 5
+        'directionX' : 1,
+        'directionY' : 0
     }
     s.sendall((json.dumps(bullet_obj) + '\n').encode())
     data3 = s.recv(1024)
@@ -26,7 +26,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         send_obj = {
             'id' : 'xyz',
             'type': 'MOVE',
-            'dx' : 1,
+            'dx' : 0,
             'dy' : 1
         }
         s.sendall((json.dumps(send_obj) + '\n').encode())

@@ -15,6 +15,8 @@ connections = set()
 
 projectile_count = 1
 
+tick_count = 1
+
 async def broadcast(data, exclude = None):
     loop = asyncio.get_running_loop()
     for connection_soc in connections:
@@ -34,6 +36,7 @@ def projectile_handling():
     DAMAGE = 20
 
     proj_to_pop = []
+    dead_players = []
     for key_proj, proj in list(projectiles.items()):
 
         proj['x'] += proj['vx'] 
@@ -43,19 +46,26 @@ def projectile_handling():
                 proj_to_pop.append(key_proj)
                 continue
  
-        player_to_pop = None
         for key_player, player in list(players.items()): 
             if abs(player['x'] - proj['x']) < HIT_RADII and abs(player['y'] - proj['y']) < HIT_RADII and key_player != proj['owner'] and player['hp'] > 0: ## hitbox
                 player['hp'] = max(0, player['hp'] - DAMAGE) ## later i would add variable dmg
                 if player['hp'] <= 0:
-                    player_to_pop = key_player
+                    dead_players.append(key_player) 
                 proj_to_pop.append(key_proj)
                 break
-        
-        players.pop(player_to_pop, None)
+
+    for key_player_to_pop in dead_players:
+        if key_player_to_pop is not None:
+            players.pop(key_player_to_pop, None)
+            print(f"player : {key_player_to_pop} died...")
+            asyncio.create_task(broadcast({ ## broadcasting an event is handled seperately
+                'type' : 'DEAD',
+                'id' : key_player_to_pop
+            }))
 
     for key_proj_to_pop in proj_to_pop:
         projectiles.pop(key_proj_to_pop, None)
+        print(f"projectile {key_proj_to_pop} removed...")
 
 def update_world_state(): ## to update world state
     
@@ -70,24 +80,28 @@ def update_world_state(): ## to update world state
             dx = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dx']))
             dy = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dy']))
 
-            players[key]['x'] += dx
-            players[key]['y'] += dy
+            if key in list(players.keys()):
 
-            players[key]['x'] = max(MAP_START, min(MAP_END, players[key]['x']))
-            players[key]['y'] = max(MAP_START, min(MAP_END, players[key]['y']))
+                players[key]['x'] += dx
+                players[key]['y'] += dy
+
+                players[key]['x'] = max(MAP_START, min(MAP_END, players[key]['x']))
+                players[key]['y'] = max(MAP_START, min(MAP_END, players[key]['y']))
 
         elif cmd['type'] == 'ATTACK': ## handling ATTACK
 
             speed = 5 ## will change acc to projectile type
 
-            projectiles[projectile_count] = {
-                'owner' : key,
-                'x' : players[key]['x'],
-                'y' : players[key]['y'],
-                'vx' : speed * cmd['direction'][0], ## think of it like vector, dx -> units in i cap, speed * dx -> velocity
-                'vy' : speed * cmd['direction'][1]
-            }
-            projectile_count += 1
+            if key in list(players.keys()):
+
+                projectiles[projectile_count] = {
+                    'owner' : key,
+                    'x' : players[key]['x'],
+                    'y' : players[key]['y'],
+                    'vx' : speed * cmd['direction'][0], ## think of it like vector, dx -> units in i cap, speed * dx -> velocity
+                    'vy' : speed * cmd['direction'][1]
+                }
+                projectile_count += 1
 
     projectile_handling()
 
@@ -101,9 +115,13 @@ def update_world_state(): ## to update world state
     asyncio.create_task(broadcast(world_state)) 
 
 async def server_tick_loop(): ## tick loop fnc
+
+    global tick_count
     
     while True:
+        print(tick_count) ## to see if ticks are working properly
         update_world_state()
+        tick_count += 1
         await asyncio.sleep(0.033)
 
 async def client_handling(conn):
