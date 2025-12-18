@@ -5,6 +5,9 @@ import json
 HOST = "127.0.0.1"
 PORT = 5000
 
+MAP_START = 0
+MAP_END = 800
+
 players = {}
 inputs = {}
 projectiles = {}
@@ -29,8 +32,6 @@ def projectile_handling():
 
     HIT_RADII = 10
     DAMAGE = 20
-    MAP_START = 0
-    MAP_END = 800
 
     proj_to_pop = []
     for key_proj, proj in list(projectiles.items()):
@@ -64,8 +65,16 @@ def update_world_state(): ## to update world state
 
         if cmd['type'] == 'MOVE': ## handling MOVE
 
-            players[key]['x'] += cmd['dx']
-            players[key]['y'] += cmd['dy']
+            MOVE_CAPPED_AT = 20 ## how much player can move per tick is also capped at 20
+
+            dx = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dx']))
+            dy = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dy']))
+
+            players[key]['x'] += dx
+            players[key]['y'] += dy
+
+            players[key]['x'] = max(MAP_START, min(MAP_END, players[key]['x']))
+            players[key]['y'] = max(MAP_START, min(MAP_END, players[key]['y']))
 
         elif cmd['type'] == 'ATTACK': ## handling ATTACK
 
