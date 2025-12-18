@@ -18,13 +18,17 @@ projectile_count = 1
 tick_count = 1
 
 async def broadcast(data, exclude = None):
+
     loop = asyncio.get_running_loop()
+    
     for connection_soc in connections:
         if connection_soc is not exclude:
             await loop.sock_sendall(connection_soc,((json.dumps(data)) + '\n').encode())
 
-def all_players(exclude = None):              
+def all_players(exclude = None):    
+
     all_players = {}
+
     for key in players.keys():
         if key != exclude:
             all_players[f"{key}"] = players[f"{key}"]
