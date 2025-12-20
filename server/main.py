@@ -37,26 +37,31 @@ def all_players(exclude = None):
 def projectile_handling(): 
 
     HIT_RADII = 10
-    DAMAGE = 20
+    DAMAGE = 100
 
     proj_to_pop = []
     dead_players = []
     for key_proj, proj in list(projectiles.items()):
 
-        proj['x'] += proj['vx'] 
-        proj['y'] += proj['vy']
+        if proj['owner'] in players:
 
-        if proj['x'] > MAP_END or proj['y'] > MAP_END or proj['x'] < MAP_START or proj['y'] < MAP_START:
-                proj_to_pop.append(key_proj)
-                continue
- 
-        for key_player, player in list(players.items()): 
-            if abs(player['x'] - proj['x']) < HIT_RADII and abs(player['y'] - proj['y']) < HIT_RADII and key_player != proj['owner'] and player['hp'] > 0: ## hitbox
-                player['hp'] = max(0, player['hp'] - DAMAGE) ## later i would add variable dmg
-                if player['hp'] <= 0:
-                    dead_players.append(key_player) 
-                proj_to_pop.append(key_proj)
-                break
+            proj['x'] += proj['vx'] 
+            proj['y'] += proj['vy']
+
+            if proj['x'] > MAP_END or proj['y'] > MAP_END or proj['x'] < MAP_START or proj['y'] < MAP_START:
+                    proj_to_pop.append(key_proj)
+                    continue
+    
+            for key_player, player in list(players.items()): 
+                if abs(player['x'] - proj['x']) < HIT_RADII and abs(player['y'] - proj['y']) < HIT_RADII and key_player != proj['owner'] and player['hp'] > 0: ## hitbox
+                    player['hp'] = max(0, player['hp'] - DAMAGE) ## later i would add variable dmg
+                    if player['hp'] <= 0:
+                        dead_players.append(key_player) 
+                    proj_to_pop.append(key_proj)
+                    break
+        else:
+
+            proj_to_pop.append(key_proj)
 
     for key_player_to_pop in dead_players:
         if key_player_to_pop is not None:
@@ -96,7 +101,7 @@ def update_world_state(): ## to update world state
 
             speed = 5 ## will change acc to projectile type
 
-            if key in list(players.keys()):
+            if key in players:
 
                 projectiles[projectile_count] = {
                     'owner' : key,
@@ -200,6 +205,7 @@ async def client_handling(conn):
         'id' : player_id,
         'type' : 'LEFT'
     }
+    print(f"player : {leave_obj['id']} left...")
     asyncio.create_task(broadcast(leave_obj, conn)) ## broadcast leave to all players other than that player
     connections.discard(conn)
     conn.close()
