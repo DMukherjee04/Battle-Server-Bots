@@ -37,7 +37,7 @@ def all_players(exclude = None):
 def projectile_handling(): 
 
     HIT_RADII = 10
-    DAMAGE = 100
+    DAMAGE = 100 ## chnage it later dude
 
     proj_to_pop = []
     dead_players = []
@@ -89,7 +89,7 @@ def update_world_state(): ## to update world state
             dx = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dx']))
             dy = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dy']))
 
-            if key in list(players.keys()):
+            if key in players:
 
                 players[key]['x'] += dx
                 players[key]['y'] += dy

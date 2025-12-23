@@ -38,10 +38,4 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             elif recv_obj['type'] == 'LEFT':
 
                 print(f"id : {recv_obj['id']} left...\n")
-
-            
-
-
-
-        
-        
+      
