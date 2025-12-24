@@ -6,7 +6,7 @@ HOST = "127.0.0.1"
 PORT = 5000
 
 MAP_START = 0
-MAP_END = 800
+MAP_END = 700
 
 players = {}
 inputs = {}
@@ -19,11 +19,19 @@ tick_count = 1
 
 async def broadcast(data, exclude = None):
 
+    connections_to_discard = []
+
     loop = asyncio.get_running_loop()
     
     for connection_soc in connections:
         if connection_soc is not exclude:
-            await loop.sock_sendall(connection_soc,((json.dumps(data)) + '\n').encode())
+            try: 
+                await loop.sock_sendall(connection_soc,((json.dumps(data)) + '\n').encode())
+            except(ConnectionResetError, BrokenPipeError, OSError):
+                connections_to_discard.append(connection_soc)
+
+    for connection_soc in connections_to_discard:
+        connections.discard(connection_soc)
 
 def all_players(exclude = None):    
 
@@ -36,7 +44,7 @@ def all_players(exclude = None):
 
 def projectile_handling(): 
 
-    HIT_RADII = 10
+    HIT_RADII = 10 ## might have to change
     DAMAGE = 100 ## chnage it later dude
 
     proj_to_pop = []
@@ -143,9 +151,11 @@ async def client_handling(conn):
 
     while True:
 
-        data = await loop.sock_recv(conn, 1024)
-        if not data:
+        try:
+            data = await loop.sock_recv(conn, 1024)
+        except(ConnectionResetError, BrokenPipeError, OSError):
             break
+        
         buffer += data.decode()
 
         while '\n' in buffer:
@@ -162,29 +172,36 @@ async def client_handling(conn):
                 sent_obj_to_joinee = { ## to the player who joined
                     'type': 'WELCOME',
                     'id': recv_obj['id'],
-                    'x' : 0,
-                    'y' : 0,
+                    'x' : 10, ## make it random
+                    'y' : 10,
                     'hp' : 100,
                     'players' : all_players(recv_obj['id'])
                 }
 
+                joinee_pos_x = sent_obj_to_joinee['x']
+                joinee_pos_y = sent_obj_to_joinee['y']
+
                 players[f"{recv_obj['id']}"] = { ## updating players obj
-                    'x' : 0,
-                    'y' : 0,
+                    'x' : joinee_pos_x,
+                    'y' : joinee_pos_y,
                     'hp' : 100
                 }
 
                 joined_player_info = { ## to all the other players, letting them know who joined 
                     'type': 'JOINED',                    
                     'id' : recv_obj['id'],
-                    'x' : 0,
-                    'y' : 0,
+                    'x' : joinee_pos_x,
+                    'y' : joinee_pos_y,
                     'hp' : 100
                 }
 
                 asyncio.create_task(broadcast(joined_player_info, conn)) ## broadcast who joined
-                await loop.sock_sendall(conn,((json.dumps(sent_obj_to_joinee)) + '\n').encode())
 
+                try:
+                    await loop.sock_sendall(conn,((json.dumps(sent_obj_to_joinee)) + '\n').encode())
+                except(ConnectionResetError, BrokenPipeError, OSError):
+                    break
+                
             elif recv_obj['type'] == 'ATTACK' : 
 
                 inputs[player_id] = {
