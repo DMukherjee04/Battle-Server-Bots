@@ -6,8 +6,8 @@ import random
 HOST = "127.0.0.1"
 PORT = 5000
 
-MAP_START = 0
-MAP_END = 700
+MAP_START = 10
+MAP_END = 690
 
 players = {}
 inputs = {}

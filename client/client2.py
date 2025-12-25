@@ -27,7 +27,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             'id' : 'abc',
             'type': 'MOVE',
             'dx' : 1,
-            'dy' : 0
+            'dy' : 1
         }
         s.sendall((json.dumps(send_obj) + '\n').encode())
         data2 = s.recv(1024)
