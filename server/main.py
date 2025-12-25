@@ -1,6 +1,7 @@
 import socket
 import asyncio
 import json
+import random
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -16,6 +17,10 @@ connections = set()
 projectile_count = 1
 
 tick_count = 1
+
+def random_coor_generator():
+    num = random.randint(10, 690)
+    return num
 
 async def broadcast(data, exclude = None):
 
@@ -44,7 +49,7 @@ def all_players(exclude = None):
 
 def projectile_handling(): 
 
-    HIT_RADII = 10 ## might have to change
+    HIT_RADII = 15 ## might have to change
     DAMAGE = 100 ## chnage it later dude
 
     proj_to_pop = []
@@ -172,8 +177,8 @@ async def client_handling(conn):
                 sent_obj_to_joinee = { ## to the player who joined
                     'type': 'WELCOME',
                     'id': recv_obj['id'],
-                    'x' : 10, ## make it random
-                    'y' : 10,
+                    'x' : random_coor_generator(),
+                    'y' : random_coor_generator(),
                     'hp' : 100,
                     'players' : all_players(recv_obj['id'])
                 }
