@@ -93,7 +93,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as soc:
             text_surface = font.render(msg, True, (0, 0, 0))
             screen.blit(text_surface, (10, 700 + i * 15))
 
-        for key, player in world_players.items():
+        for player in world_players.values():
             x = player['x']
             y = player['y']
 
