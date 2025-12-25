@@ -7,7 +7,8 @@ HOST = "127.0.0.1"
 PORT = 5000
 
 WIDTH, HEIGHT = 700, 750
-RED   = (255, 0, 0) 
+SKY_BLUE =  (120, 180, 255)
+MAGENTA = (255, 80, 255)
 
 world_players = {}
 world_projectiles = {}
@@ -88,7 +89,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as soc:
         screen.fill((255, 255, 255))
         pygame.draw.rect(screen, (0, 0, 0), (0, 0, WIDTH, 700))
 
-        for i, msg in enumerate(to_print): ## u cant see shit! its too fast. 
+        for i, msg in enumerate(to_print): 
             text_surface = font.render(msg, True, (0, 0, 0))
             screen.blit(text_surface, (10, 700 + i * 15))
 
@@ -96,14 +97,14 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as soc:
             x = player['x']
             y = player['y']
 
-            pygame.draw.circle(screen, RED, (x, y), 10)
+            pygame.draw.circle(screen, SKY_BLUE, (x, y), 10)
 
             label = font.render(key, True, (255, 255, 255))
             label_rect = label.get_rect(center = (x, y - 18))
             screen.blit(label, label_rect)
 
         for key, projectile in list(world_projectiles.items()): 
-            pygame.draw.circle(screen, RED, (projectile['x'], projectile['y']), 5) 
+            pygame.draw.circle(screen, MAGENTA, (projectile['x'], projectile['y']), 5) 
 
         pygame.display.flip() 
 
