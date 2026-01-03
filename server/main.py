@@ -19,7 +19,7 @@ projectile_count = 1
 tick_count = 1
 
 def random_coor_generator():
-    num = random.randint(10, 690)
+    num = random.randint(MAP_START, MAP_END)
     return num
 
 async def broadcast(data, exclude = None):
