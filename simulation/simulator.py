@@ -1,8 +1,19 @@
+# action = {
+#     "dx": 0,
+#     "dy": 0,
+#     "shoot": 0,
+#     "shoot_dx": 0,
+#     "shoot_dy": 0
+# }
+
 import random
 
-MOVE_CAPPED_AT = 20
 MAP_START = 10
 MAP_END = 690
+MOVE_CAPPED_AT = 20
+SPEED = 5
+HIT_RADII = 15
+DAMAGE = 20
 
 projectile_count = 1
 
@@ -14,12 +25,12 @@ def random_coor_generator():
 
 def reset():
     return {
-        'player' : {
+        'agent_1' : {
             'x' : random_coor_generator(),
             'y' : random_coor_generator(),
             'hp' : 100
         },
-        'enemy' : {
+        'agent_2' : {
             'x' : random_coor_generator(),
             'y' : random_coor_generator(),
             'hp' : 100
@@ -44,8 +55,18 @@ def step(state, actions):
                 'vy' : action['shootY']
             }
 
-    ## write whatever is not controlled by actions
+    for proj in state['projectiles'].values():
+        proj['x'] += SPEED * proj['vx']
+        proj['y'] += SPEED * proj['vy']
+
+        if proj['owner'] == 'agent_1':
+            target = 'agent_2'
+        else:
+            target = 'agent_1'
+
+        if abs(proj['x'] - state[target]['x']) < HIT_RADII and abs(proj['y'] - state[target]['y']) < HIT_RADII and state[target]['hp'] > 0:
+            state[target]['hp'] += DAMAGE
+
+            ## add the reward system
 
 state = reset()
-
-
