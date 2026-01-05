@@ -1,11 +1,3 @@
-# action = {
-#     "dx": 0,
-#     "dy": 0,
-#     "shoot": 0,
-#     "shoot_dx": 0,
-#     "shoot_dy": 0
-# }
-
 import random
 
 MAP_START = 10
@@ -28,36 +20,53 @@ def reset():
         'agent_1' : {
             'x' : random_coor_generator(),
             'y' : random_coor_generator(),
-            'hp' : 100
+            'hp' : 100,
         },
         'agent_2' : {
             'x' : random_coor_generator(),
             'y' : random_coor_generator(),
-            'hp' : 100
+            'hp' : 100,
         },
         'projectiles' : {}
     }
 
 def step(state, actions):
 
+    reward = {'agent_1' : 0, 'agent_2' : 0}
+
     global projectile_count 
+    done = False
 
     for key, action in actions.items():
-        state[key]['x'] += action['x']
-        state[key]['y'] += action['y']
+
+        dx = max(-MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, action['x']))
+        dy = max(-MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, action['y']))
+
+        state[key]['x'] += dx
+        state[key]['y'] += dy
+
+        state[key]['x'] = min(max(MAP_START, state[key]['x']), MAP_END)
+        state[key]['y'] = min(max(MAP_START, state[key]['y']), MAP_END)
 
         if action['shoot'] == 1:
             state['projectiles'][projectile_count] = {
                 'owner' : key,
                 'x' : state[key]['x'],
                 'y' : state[key]['y'],
-                'vx' : action['shootX'],
-                'vy' : action['shootY']
+                'vx' : action['shoot_dx'],
+                'vy' : action['shoot_dy']
             }
+            projectile_count += 1
 
-    for proj in state['projectiles'].values():
+    projectiles_to_dispose = []
+
+    for key, proj in state['projectiles'].items():
         proj['x'] += SPEED * proj['vx']
         proj['y'] += SPEED * proj['vy']
+
+        if proj['x'] > MAP_END or proj['y'] > MAP_END or proj['x'] < MAP_START or proj['y'] < MAP_START:
+            projectiles_to_dispose.append(key)
+            continue
 
         if proj['owner'] == 'agent_1':
             target = 'agent_2'
@@ -65,8 +74,21 @@ def step(state, actions):
             target = 'agent_1'
 
         if abs(proj['x'] - state[target]['x']) < HIT_RADII and abs(proj['y'] - state[target]['y']) < HIT_RADII and state[target]['hp'] > 0:
-            state[target]['hp'] += DAMAGE
+            state[target]['hp'] -= DAMAGE
+            reward[proj['owner']] += 10
 
-            ## add the reward system
+            projectiles_to_dispose.append(key)
+
+            if state[target]['hp'] <= 0:
+
+                reward[proj['owner']] += 100
+                reward[target] -= 100
+                done = True
+                break
+
+    for proj_key in projectiles_to_dispose:
+        state['projectiles'].pop(proj_key, None)
+
+    return state, reward, done
 
 state = reset()
