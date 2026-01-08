@@ -1,5 +1,5 @@
 import socket ## add shoot cd and normalize bullet speed
-import asyncio
+import asyncio ## and round the coor when rendering and collision checking
 import json
 import random
 
