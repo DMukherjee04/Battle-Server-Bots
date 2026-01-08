@@ -1,4 +1,4 @@
-import socket
+import socket ## add shoot cd and normalize bullet speed
 import asyncio
 import json
 import random
@@ -65,7 +65,7 @@ def projectile_handling():
                     proj_to_pop.append(key_proj)
                     continue
     
-            for key_player, player in list(players.items()): 
+            for key_player, player in list(players.items()): ## hitbox proper definition
                 if abs(player['x'] - proj['x']) < HIT_RADII and abs(player['y'] - proj['y']) < HIT_RADII and key_player != proj['owner'] and player['hp'] > 0: ## hitbox
                     player['hp'] = max(0, player['hp'] - DAMAGE) ## later i would add variable dmg
                     if player['hp'] <= 0:

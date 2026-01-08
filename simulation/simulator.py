@@ -1,5 +1,5 @@
 import random
-import time
+import math
 
 MAP_START = 10
 MAP_END = 690
@@ -18,6 +18,9 @@ def random_coor_generator():
     return num
 
 def reset():
+    global projectile_count 
+    projectile_count = 1
+
     return {
         'agent_1' : {
             'x' : random_coor_generator(),
@@ -39,8 +42,6 @@ def step(state, actions):
     reward = {'agent_1' : 0, 'agent_2' : 0}
 
     global projectile_count 
-    global time_now_1
-    global time_now_2
 
     done = False
 
@@ -59,15 +60,23 @@ def step(state, actions):
         state[key]['y'] = min(max(MAP_START, state[key]['y']), MAP_END)
 
         if action['shoot'] == 1 and state[key]['shoot_cd'] <= 0 :
-            state['projectiles'][projectile_count] = {
-                'owner' : key,
-                'x' : state[key]['x'],
-                'y' : state[key]['y'],
-                'vx' : action['shoot_dx'],
-                'vy' : action['shoot_dy'],
-            }
-            projectile_count += 1
-            state[key]['shoot_cd'] = SHOOT_CD
+            shoot_dir_x = action['shoot_dx']
+            shoot_dir_y = action['shoot_dy']
+            shoot_dir_mag = math.sqrt(shoot_dir_x * shoot_dir_x + shoot_dir_y * shoot_dir_y)
+            if shoot_dir_mag != 0 :
+                shoot_dir_x /= shoot_dir_mag
+                shoot_dir_y /= shoot_dir_mag
+
+                state['projectiles'][projectile_count] = {
+                    'owner' : key,
+                    'x' : state[key]['x'],
+                    'y' : state[key]['y'],
+                    'vx' : shoot_dir_x,
+                    'vy' : shoot_dir_y
+                }
+
+                projectile_count += 1
+                state[key]['shoot_cd'] = SHOOT_CD
 
     projectiles_to_dispose = []
 
@@ -84,7 +93,9 @@ def step(state, actions):
         else:
             target = 'agent_1'
 
-        if abs(proj['x'] - state[target]['x']) < HIT_RADII and abs(proj['y'] - state[target]['y']) < HIT_RADII and state[target]['hp'] > 0:
+        dx = proj['x'] - state[target]['x']
+        dy = proj['y'] - state[target]['y']
+        if dx * dx + dy * dy <= HIT_RADII * HIT_RADII and state[target]['hp'] > 0:
             state[target]['hp'] -= DAMAGE
             reward[proj['owner']] += 10
 
@@ -111,8 +122,8 @@ for _ in range(1000):
             "dx": random.randint(-5, 5),
             "dy": random.randint(-5, 5),
             "shoot": random.choice([0, 1]),
-            "shoot_dx": random.choice([-1, 1]),
-            "shoot_dy": random.choice([-1, 1])
+            "shoot_dx": random.uniform(-1.0, 1.0),
+            "shoot_dy": random.uniform(-1.0, 1.0)
         },
 
         'agent_2':
@@ -120,8 +131,8 @@ for _ in range(1000):
             "dx": random.randint(-5, 5),
             "dy": random.randint(-5, 5),
             "shoot": random.choice([0, 1]),
-            "shoot_dx": random.choice([-1, 1]),
-            "shoot_dy": random.choice([-1, 1])
+            "shoot_dx": random.uniform(-1.0, 1.0),
+            "shoot_dy": random.uniform(-1.0, 1.0)
         }
     }
 
