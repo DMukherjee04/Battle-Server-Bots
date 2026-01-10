@@ -1,13 +1,20 @@
-import socket ## add shoot cd and normalize bullet speed
-import asyncio ## and round the coor when rendering and collision checking
+import socket 
+import asyncio
 import json
 import random
+import math
 
 HOST = "127.0.0.1"
 PORT = 5000
 
 MAP_START = 10
 MAP_END = 690
+
+SHOOT_CD = 5
+HIT_RADII = 15
+DAMAGE = 20 
+MOVE_CAPPED_AT = 20 ## how much player can move per tick is also capped at 20
+SPEED = 5
 
 players = {}
 inputs = {}
@@ -49,9 +56,6 @@ def all_players(exclude = None):
 
 def projectile_handling(): 
 
-    HIT_RADII = 15 ## might have to change
-    DAMAGE = 100 ## chnage it later dude
-
     proj_to_pop = []
     dead_players = []
     for key_proj, proj in list(projectiles.items()):
@@ -65,11 +69,13 @@ def projectile_handling():
                     proj_to_pop.append(key_proj)
                     continue
     
-            for key_player, player in list(players.items()): ## hitbox proper definition
-                if abs(player['x'] - proj['x']) < HIT_RADII and abs(player['y'] - proj['y']) < HIT_RADII and key_player != proj['owner'] and player['hp'] > 0: ## hitbox
-                    player['hp'] = max(0, player['hp'] - DAMAGE) ## later i would add variable dmg
+            for key_player, player in list(players.items()): ## hitbox proper definition : done
+                dx = player['x'] - proj['x']
+                dy = player['y'] - proj['y']
+                if dx * dx + dy * dy <= HIT_RADII * HIT_RADII and key_player != proj['owner'] and player['hp'] > 0: ## hitbox
+                    player['hp'] = max(0, player['hp'] - DAMAGE) 
                     if player['hp'] <= 0:
-                        dead_players.append(key_player) 
+                        dead_players.append(key_player)  
                     proj_to_pop.append(key_proj)
                     break
         else:
@@ -93,11 +99,12 @@ def update_world_state(): ## to update world state
     
     global projectile_count
 
+    for key, player in list(players.items()):
+        player['shoot_cd'] = max(0, player['shoot_cd'] - 1)
+        
     for key, cmd in list(inputs.items()):
 
         if cmd['type'] == 'MOVE': ## handling MOVE
-
-            MOVE_CAPPED_AT = 20 ## how much player can move per tick is also capped at 20
 
             dx = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dx']))
             dy = max((-1) * MOVE_CAPPED_AT, min(MOVE_CAPPED_AT, cmd['dy']))
@@ -110,9 +117,14 @@ def update_world_state(): ## to update world state
                 players[key]['x'] = max(MAP_START, min(MAP_END, players[key]['x']))
                 players[key]['y'] = max(MAP_START, min(MAP_END, players[key]['y']))
 
-        elif cmd['type'] == 'ATTACK': ## handling ATTACK
+        elif cmd['type'] == 'ATTACK' and players[key]['shoot_cd'] <= 0: ## handling ATTACK
 
-            speed = 5 ## will change acc to projectile type
+            shoot_dir_x = cmd['direction'][0]
+            shoot_dir_y = cmd['direction'][1]
+            shoot_dir_mag = math.sqrt(shoot_dir_x * shoot_dir_x + shoot_dir_y * shoot_dir_y)
+            if shoot_dir_mag > 0:
+                shoot_dir_x /= shoot_dir_mag
+                shoot_dir_y /= shoot_dir_mag
 
             if key in players:
 
@@ -120,17 +132,18 @@ def update_world_state(): ## to update world state
                     'owner' : key,
                     'x' : players[key]['x'],
                     'y' : players[key]['y'],
-                    'vx' : speed * cmd['direction'][0], ## think of it like vector, dx -> units in i cap, speed * dx -> velocity
-                    'vy' : speed * cmd['direction'][1]
+                    'vx' : SPEED * shoot_dir_x, ## think of it like vector, dx -> units in i cap, speed * dx -> velocity
+                    'vy' : SPEED * shoot_dir_y
                 }
                 projectile_count += 1
+                players[key]['shoot_cd'] = SHOOT_CD
 
     projectile_handling()
 
     world_state = {
         'type' : 'STATE',
-        'players' : players,
-        'projectiles' : projectiles
+        'players' : dict(players),
+        'projectiles' : dict(projectiles)
     }
     
     inputs.clear()
@@ -189,7 +202,8 @@ async def client_handling(conn):
                 players[f"{recv_obj['id']}"] = { ## updating players obj
                     'x' : joinee_pos_x,
                     'y' : joinee_pos_y,
-                    'hp' : 100
+                    'hp' : 100, 
+                    'shoot_cd' : 0
                 }
 
                 joined_player_info = { ## to all the other players, letting them know who joined 

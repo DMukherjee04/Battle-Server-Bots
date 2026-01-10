@@ -2,6 +2,7 @@ import socket
 import json
 import pygame
 import sys
+import math
 
 HOST = "127.0.0.1"
 PORT = 5000
@@ -81,7 +82,6 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as soc:
                 msg = f"id : {recv_obj['id']} left..."
 
             if msg:
-
                 to_print.append(msg)
                 if len(to_print) > max_msg:
                     to_print.pop(0)
@@ -104,7 +104,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as soc:
             screen.blit(label, label_rect)
 
         for key, projectile in list(world_projectiles.items()): 
-            pygame.draw.circle(screen, MAGENTA, (projectile['x'], projectile['y']), 5) 
+            pygame.draw.circle(screen, MAGENTA, (round(projectile['x']), round(projectile['y'])), 5) 
 
         pygame.display.flip() 
 
